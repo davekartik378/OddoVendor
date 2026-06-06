@@ -32,15 +32,15 @@ if rfqs is None:
 # ── METRIC CARDS ────────────────────────────────────────────────────────────────
 total_rfqs    = len(rfqs)
 open_rfqs     = len([r for r in rfqs if r.get("status") == "Open"])
-pending_appr  = len([r for r in rfqs if r.get("status") == "Open"])
+pending_appr  = len([r for r in rfqs if r.get("status") == "Under Review"])  # FIX B09
 approved      = len([r for r in rfqs if r.get("status") == "Approved"])
 closed        = len([r for r in rfqs if r.get("status") == "Closed"])
 total_vendors = len(vendors)
 
 c1, c2, c3, c4 = st.columns(4)
-c1.metric("Total RFQs",       total_rfqs)
-c2.metric("Open / Active",    open_rfqs)
-c3.metric("Pending Approval", pending_appr)
+c1.metric("Total RFQs",         total_rfqs)
+c2.metric("Open / Active",      open_rfqs)
+c3.metric("Pending Approval",   pending_appr)
 c4.metric("Registered Vendors", total_vendors)
 
 st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)

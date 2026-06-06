@@ -90,6 +90,15 @@ else:
         f"<p style='font-size:0.85rem; color:#8B9DB8;'>Ready to send: <code style='color:#F5A623'>{po_number}</code></p>",
         unsafe_allow_html=True,
     )
+    st.markdown(
+        """<div style="background:rgba(245,166,35,0.07); border:1px solid rgba(245,166,35,0.25);
+        border-radius:8px; padding:0.6rem 1rem; margin-bottom:0.75rem;
+        font-family:'DM Sans',sans-serif; font-size:0.82rem; color:#FCD34D;">
+        ⚙️ Email requires SMTP credentials in <code>backend/.env</code>.
+        Copy <code>.env.example</code> → <code>.env</code> and fill in your Gmail App Password.
+        </div>""",
+        unsafe_allow_html=True,
+    )
     with st.form("email_form"):
         recipient = st.text_input("Recipient Email *", placeholder="vendor@company.com")
         send = st.form_submit_button("Send Invoice via Email", use_container_width=True)

@@ -5,13 +5,17 @@ from typing import List
 from datetime import datetime, timezone
 import pandas as pd
 import hashlib
+import os
+import sys
+from dotenv import load_dotenv                 # FIX B08: load .env config
 from database import engine, get_db
 import models
 import schemas
 from fastapi.responses import FileResponse
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+load_dotenv()                                  # reads backend/.env into os.environ
+
+sys.path.append(os.path.dirname(__file__))     # FIX B13: engines/ is inside backend/
 from engines.pdf_generator import generate_invoice_pdf
 
 # Spin up base DB architecture tables 
@@ -28,20 +32,39 @@ app.add_middleware(
 )
 
 # --- USER CREATION & AUTH ---
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def hash_password(password: str) -> str:
+    """bcrypt password hashing — production-grade."""   # FIX B10
+    return pwd_context.hash(password)
+
+def verify_password(plain: str, hashed: str) -> bool:
+    return pwd_context.verify(plain, hashed)
+
 @app.post("/users/", response_model=schemas.UserResponse, tags=["Users"])
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
-    
-    # In production, use bcrypt or passlib here. For development, simple mock hashing:
-    fake_hashed_password = user.password + "scrambled"
-    
-    new_user = models.User(email=user.email, password_hash=fake_hashed_password, role=user.role)
+    new_user = models.User(
+        email=user.email,
+        password_hash=hash_password(user.password),
+        role=user.role
+    )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
     return new_user
+
+@app.post("/login", tags=["Users"])
+def login(email: str, password: str, db: Session = Depends(get_db)):
+    """Validates credentials and returns user info for session."""
+    user = db.query(models.User).filter(models.User.email == email).first()
+    if not user or not verify_password(password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    return {"id": user.id, "email": user.email, "role": user.role}
 
 # --- VENDOR REGISTRATION ---
 @app.post("/vendors/", response_model=schemas.VendorResponse, tags=["Vendors"])
@@ -57,8 +80,21 @@ def register_vendor(vendor: schemas.VendorCreate, db: Session = Depends(get_db))
     return new_vendor
 @app.get("/vendors/", response_model=List[schemas.VendorResponse], tags=["Vendors"])
 def get_all_vendors(db: Session = Depends(get_db)):
-    """Fetch all approved vendors for the directory."""
+    """Fetch all vendors for the directory."""
     return db.query(models.Vendor).all()
+
+@app.patch("/vendors/{vendor_id}/health-score", tags=["Vendors"])
+def update_vendor_health_score(vendor_id: int, score: float, db: Session = Depends(get_db)):
+    """Manually adjust a vendor's health score (Admin use). Score must be 1.0–5.0."""
+    if not (1.0 <= score <= 5.0):
+        raise HTTPException(status_code=400, detail="Score must be between 1.0 and 5.0")
+    vendor = db.query(models.Vendor).filter(models.Vendor.id == vendor_id).first()
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+    vendor.health_score = round(score, 2)
+    db.commit()
+    db.refresh(vendor)
+    return {"vendor_id": vendor_id, "name": vendor.name, "health_score": vendor.health_score}
 
 # --- RFQ LOGIC ---
 @app.post("/rfqs/", response_model=schemas.RFQResponse, tags=["Procurement"])
@@ -192,6 +228,16 @@ def approve_procurement(rfq_id: int, winning_quote_id: int, manager_id: int, rem
     losing_quotes = db.query(models.Quotation).filter(models.Quotation.rfq_id == rfq_id, models.Quotation.id != winning_quote_id).all()
     for lq in losing_quotes:
         lq.status = "Rejected"
+
+    # FIX B11: update vendor health scores so the Smart Advisor has real signal
+    # Winner: +0.1 per win (capped at 5.0), Losers: -0.05 per loss (floor at 1.0)
+    winning_vendor = db.query(models.Vendor).filter(models.Vendor.id == quote.vendor_id).first()
+    if winning_vendor:
+        winning_vendor.health_score = min(5.0, round(winning_vendor.health_score + 0.1, 2))
+    for lq in losing_quotes:
+        losing_vendor = db.query(models.Vendor).filter(models.Vendor.id == lq.vendor_id).first()
+        if losing_vendor:
+            losing_vendor.health_score = max(1.0, round(losing_vendor.health_score - 0.05, 2))
         
     # Write to Immutable Ledger
     action_text = f"APPROVED RFQ #{rfq_id} | WINNER: Quote #{winning_quote_id} | REMARKS: {remarks}"
@@ -217,7 +263,12 @@ def generate_purchase_order(rfq_id: int, db: Session = Depends(get_db)):
     
     # Generate unique PO Number
     po_number = f"PO-2026-{rfq_id:04d}"
-    
+
+    # Calculate totals (18% GST)
+    subtotal   = winning_quote.unit_price * rfq.quantity
+    tax_amount = round(subtotal * 0.18, 2)
+    total      = round(subtotal + tax_amount, 2)
+
     # Call our local ReportLab engine
     filepath = generate_invoice_pdf(
         po_number=po_number,
@@ -226,12 +277,26 @@ def generate_purchase_order(rfq_id: int, db: Session = Depends(get_db)):
         quantity=rfq.quantity,
         unit_price=winning_quote.unit_price
     )
-    
+
+    # FIX B07: persist PurchaseOrder to DB so analytics and total_pos are accurate
+    existing_po = db.query(models.PurchaseOrder).filter(
+        models.PurchaseOrder.po_number == po_number
+    ).first()
+    if not existing_po:
+        new_po = models.PurchaseOrder(
+            quotation_id=winning_quote.id,
+            po_number=po_number,
+            total_amount=total,
+            tax_amount=tax_amount,
+            status="Generated",
+        )
+        db.add(new_po)
+
     # Update RFQ status to Closed/Completed
     rfq.status = "Closed"
     db.commit()
-    
-    return {"status": "Success", "po_number": po_number, "file_path": filepath}
+
+    return {"status": "Success", "po_number": po_number, "file_path": filepath, "total": total}
 
 @app.get("/download-invoice/{po_number}", tags=["Fulfillment"])
 def download_invoice(po_number: str):
@@ -268,11 +333,17 @@ def send_invoice_email(po_number: str, recipient_email: str):
     if not os.path.exists(filepath):
         raise HTTPException(status_code=404, detail="Invoice PDF not found. Generate PO first.")
 
-    # --- SMTP CONFIG — update these with real credentials ---
-    SMTP_SERVER = "smtp.gmail.com"
-    SMTP_PORT = 587
-    SENDER_EMAIL = "your_email@gmail.com"       # ← Change this
-    SENDER_PASSWORD = "your_app_password"        # ← Change this (use Gmail App Password)
+    # FIX B08: read from .env — never hardcode credentials
+    SMTP_SERVER   = os.environ.get("SMTP_SERVER",   "smtp.gmail.com")
+    SMTP_PORT     = int(os.environ.get("SMTP_PORT", "587"))
+    SENDER_EMAIL  = os.environ.get("SMTP_EMAIL",    "")
+    SENDER_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+
+    if not SENDER_EMAIL or not SENDER_PASSWORD:
+        raise HTTPException(
+            status_code=503,
+            detail="Email not configured. Add SMTP_EMAIL and SMTP_PASSWORD to backend/.env"
+        )
 
     try:
         msg = MIMEMultipart()

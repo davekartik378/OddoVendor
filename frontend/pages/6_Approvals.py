@@ -85,9 +85,8 @@ if quotes_res.status_code == 200 and quotes_res.json():
                 st.error("Approval remarks are required for the audit log.")
             else:
                 winning_id = quote_labels[selected_quote_label]
-                # Use the logged-in user's session — for hackathon demo, manager_id=1
-                # In production this would come from a proper auth token
-                manager_id = 1
+                # Use the actual logged-in manager's ID from session
+                manager_id = st.session_state.get("user_id") or 1
                 res = requests.post(
                     f"{API_URL}/rfqs/{rfq_id}/approve"
                     f"?winning_quote_id={winning_id}&manager_id={manager_id}&remarks={remarks}"

@@ -105,7 +105,8 @@ with tab2:
                     "deadline": dt_deadline
                 }
                 try:
-                    post_res = requests.post(f"{API_URL}/rfqs/?creator_id=1", json=payload)
+                    creator_id = st.session_state.get("user_id") or 1
+                    post_res = requests.post(f"{API_URL}/rfqs/?creator_id={creator_id}", json=payload)
                     if post_res.status_code == 200:
                         st.success(f"RFQ '{title}' created as Draft. Go to All RFQs tab and click Publish when ready.")
                     else:
