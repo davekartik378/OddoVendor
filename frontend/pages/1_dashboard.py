@@ -65,11 +65,11 @@ if total_rfqs > 0:
                 f"""<div style="
                     display:flex; justify-content:space-between; align-items:center;
                     padding:0.6rem 0.75rem; margin-bottom:6px;
-                    background:#0D1526; border:1px solid rgba(255,255,255,0.06);
+                    background:#FFFFFF; border:1px solid #E2E8F0;
                     border-radius:8px;
                 ">
-                    <span style="font-family:'DM Sans',sans-serif; font-size:0.82rem;
-                        color:#EFF4FB; font-weight:500;">
+                    <span style="font-family:'Geist',sans-serif; font-size:0.82rem;
+                        color:#0F172A; font-weight:500;">
                         #{r['id']} · {r['title'][:28]}{'…' if len(r['title'])>28 else ''}
                     </span>
                     {badge}

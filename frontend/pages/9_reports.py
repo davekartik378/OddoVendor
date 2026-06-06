@@ -48,18 +48,18 @@ with col_top:
     if top:
         st.markdown(
             f"""<div style="
-                background:#0D1526; border:1px solid rgba(245,166,35,0.2);
+                background:#FFFFFF; border:1px solid rgba(79,106,245,0.25);
                 border-radius:10px; padding:1.1rem 1.3rem; margin-top:0.5rem;
             ">
-                <div style="font-family:'DM Sans',sans-serif; font-size:0.7rem;
+                <div style="font-family:'Geist',sans-serif; font-size:0.7rem;
                     font-weight:600; letter-spacing:0.08em; text-transform:uppercase;
-                    color:#4A5A72; margin-bottom:0.4rem;">Top Performing Vendor</div>
-                <div style="font-family:'Plus Jakarta Sans',sans-serif;
-                    font-size:1.2rem; font-weight:700; color:#EFF4FB;">
+                    color:#64748B; margin-bottom:0.4rem;">Top Performing Vendor</div>
+                <div style="font-family:'Geist',sans-serif;
+                    font-size:1.2rem; font-weight:700; color:#0F172A;">
                     {top['name']}
                 </div>
-                <div style="font-family:'DM Mono',monospace; font-size:0.82rem;
-                    color:#F5A623; margin-top:2px;">
+                <div style="font-family:'Geist Mono',monospace; font-size:0.82rem;
+                    color:#4F6AF5; margin-top:2px;">
                     Health Score: {top['score']} ★
                 </div>
             </div>""",
@@ -69,23 +69,23 @@ with col_top:
 with col_health:
     st.markdown(
         f"""<div style="
-            background:#0D1526; border:1px solid rgba(255,255,255,0.06);
+            background:#FFFFFF; border:1px solid #E2E8F0;
             border-radius:10px; padding:1.1rem 1.3rem; margin-top:0.5rem;
         ">
-            <div style="font-family:'DM Sans',sans-serif; font-size:0.7rem;
+            <div style="font-family:'Geist',sans-serif; font-size:0.7rem;
                 font-weight:600; letter-spacing:0.08em; text-transform:uppercase;
-                color:#4A5A72; margin-bottom:0.4rem;">Network Avg Health Score</div>
-            <div style="font-family:'Plus Jakarta Sans',sans-serif;
-                font-size:1.2rem; font-weight:700; color:#EFF4FB;">
+                color:#64748B; margin-bottom:0.4rem;">Network Avg Health Score</div>
+            <div style="font-family:'Geist',sans-serif;
+                font-size:1.2rem; font-weight:700; color:#0F172A;">
                 {avg_health} / 5.0
             </div>
             <div style="
-                margin-top:0.5rem; height:6px; background:#142035;
+                margin-top:0.5rem; height:6px; background:#F1F5F9;
                 border-radius:3px; overflow:hidden;
             ">
                 <div style="
                     width:{(avg_health/5)*100:.1f}%; height:100%;
-                    background:linear-gradient(90deg,#F5A623,#10B981);
+                    background:linear-gradient(90deg,#4F6AF5,#10B981);
                     border-radius:3px;
                 "></div>
             </div>

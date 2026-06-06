@@ -44,6 +44,20 @@ def apply_global_styles():
         font-family: 'Geist', sans-serif !important;
     }
 
+    /* Kill Streamlit's dark top toolbar / header band */
+    [data-testid="stHeader"],
+    .stApp > header,
+    header[data-testid="stHeader"] {
+        background-color: var(--bg-base) !important;
+        background: var(--bg-base) !important;
+        border-bottom: 1px solid var(--border) !important;
+        box-shadow: none !important;
+        height: auto !important;
+    }
+    [data-testid="stHeader"] * { color: var(--text-secondary) !important; }
+    [data-testid="stDecoration"] { background: transparent !important; display: none !important; }
+    [data-testid="stToolbar"] { background: transparent !important; }
+
     .block-container {
         padding-top: 2rem !important;
         padding-bottom: 3rem !important;
@@ -52,8 +66,57 @@ def apply_global_styles():
 
     /* ===== SIDEBAR ===== */
     [data-testid="stSidebar"] {
+        display: block !important;
+        visibility: visible !important;
         background-color: #FFFFFF !important;
         border-right: 1px solid var(--border) !important;
+    }
+
+    [data-testid="stSidebarCollapsedControl"] {
+        display: flex !important;
+        visibility: visible !important;
+    }
+
+    .vb-nav-label {
+        font-family: 'Geist', sans-serif !important;
+        font-size: 0.68rem !important;
+        font-weight: 800 !important;
+        letter-spacing: 0.11em !important;
+        text-transform: uppercase !important;
+        color: var(--text-muted) !important;
+        margin: 0.75rem 0 0.45rem 0.2rem !important;
+    }
+
+    .vb-sidebar-divider {
+        height: 1px;
+        background: var(--border);
+        margin: 0.9rem 0 0.9rem 0;
+    }
+
+    [data-testid="stSidebar"] .stButton > button {
+        justify-content: flex-start !important;
+        border-radius: 8px !important;
+        border: 1px solid transparent !important;
+        box-shadow: none !important;
+        margin-bottom: 0.2rem !important;
+        padding: 0.58rem 0.7rem !important;
+        font-weight: 650 !important;
+        color: var(--text-secondary) !important;
+        background: transparent !important;
+    }
+
+    [data-testid="stSidebar"] .stButton > button:hover {
+        background: var(--bg-elevated) !important;
+        color: var(--accent) !important;
+        border-color: var(--border) !important;
+        transform: none !important;
+    }
+
+    [data-testid="stSidebar"] .stButton > button[kind="primary"] {
+        background: var(--accent-light) !important;
+        border-color: var(--accent-border) !important;
+        color: var(--accent) !important;
+        box-shadow: inset 3px 0 0 var(--accent) !important;
     }
 
     [data-testid="stSidebar"] .stMarkdown p,
@@ -293,7 +356,7 @@ def apply_global_styles():
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
     [data-testid="stToolbar"] { display: none; }
-    [data-testid="stSidebarNav"] { display: none !important; }
+    
 
     /* ===== SCROLLBAR ===== */
     ::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -383,4 +446,18 @@ def info_card(title: str, body: str, color: str = "#4F6AF5"):
         font-family:'Geist',sans-serif; font-size:0.85rem; color:{color};">
         <strong>{title}</strong>&nbsp; {body}
     </div>
+    """, unsafe_allow_html=True)
+
+
+def card(html_inner: str, accent: str = "#4F6AF5"):
+    """Light, neutral card used inside pages — replaces ad-hoc dark inline cards."""
+    import streamlit as st
+    st.markdown(f"""
+    <div style="
+        background:#FFFFFF; border:1px solid #E2E8F0;
+        border-left:3px solid {accent};
+        border-radius:10px; padding:0.75rem 1rem; margin-bottom:0.5rem;
+        box-shadow:0 1px 3px rgba(0,0,0,0.04);
+        font-family:'Geist',sans-serif;
+    ">{html_inner}</div>
     """, unsafe_allow_html=True)

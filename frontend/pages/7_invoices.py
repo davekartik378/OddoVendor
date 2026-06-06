@@ -80,20 +80,20 @@ po_number = st.session_state.get("last_po_number", "")
 
 if not po_number:
     st.markdown(
-        "<p style='font-size:0.85rem; color:#4A5A72;'>"
+        "<p style='font-size:0.85rem; color:#64748B;'>"
         "Generate a PO above first, then send the invoice directly from here."
         "</p>",
         unsafe_allow_html=True,
     )
 else:
     st.markdown(
-        f"<p style='font-size:0.85rem; color:#8B9DB8;'>Ready to send: <code style='color:#F5A623'>{po_number}</code></p>",
+        f"<p style='font-size:0.85rem; color:#64748B;'>Ready to send: <code style='color:#4F6AF5'>{po_number}</code></p>",
         unsafe_allow_html=True,
     )
     st.markdown(
-        """<div style="background:rgba(245,166,35,0.07); border:1px solid rgba(245,166,35,0.25);
+        """<div style="background:rgba(79,106,245,0.06); border:1px solid rgba(79,106,245,0.30);
         border-radius:8px; padding:0.6rem 1rem; margin-bottom:0.75rem;
-        font-family:'DM Sans',sans-serif; font-size:0.82rem; color:#FCD34D;">
+        font-family:'Geist',sans-serif; font-size:0.82rem; color:#4F6AF5;">
         ⚙️ Email requires SMTP credentials in <code>backend/.env</code>.
         Copy <code>.env.example</code> → <code>.env</code> and fill in your Gmail App Password.
         </div>""",

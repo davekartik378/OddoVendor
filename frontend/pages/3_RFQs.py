@@ -33,12 +33,12 @@ with tab1:
                         with col_info:
                             st.markdown(
                                 f"""<div style="padding:0.1rem 0;">
-                                    <span style="font-family:'Plus Jakarta Sans',sans-serif;
-                                        font-size:0.95rem; font-weight:600; color:#EFF4FB;">
+                                    <span style="font-family:'Geist',sans-serif;
+                                        font-size:0.95rem; font-weight:600; color:#0F172A;">
                                         #{r['id']} · {r['title']}
                                     </span><br/>
-                                    <span style="font-family:'DM Mono',monospace;
-                                        font-size:0.72rem; color:#4A5A72;">
+                                    <span style="font-family:'Geist Mono',monospace;
+                                        font-size:0.72rem; color:#64748B;">
                                         Qty: {r['quantity']} · Deadline: {str(r['deadline'])[:10]}
                                     </span>
                                 </div>""",

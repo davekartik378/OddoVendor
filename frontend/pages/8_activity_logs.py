@@ -35,14 +35,14 @@ with col_stat:
 with col_info:
     st.markdown(
         """<div style="
-            background: rgba(245,166,35,0.07);
-            border: 1px solid rgba(245,166,35,0.2);
+            background: rgba(79,106,245,0.06);
+            border: 1px solid rgba(79,106,245,0.25);
             border-radius: 10px;
             padding: 0.8rem 1.1rem;
             margin-top: 0.25rem;
         ">
             <span style="
-                font-family:'DM Sans',sans-serif; font-size:0.82rem; color:#FCD34D;
+                font-family:'Geist',sans-serif; font-size:0.82rem; color:#4F6AF5;
             ">
                 🔗 Each entry is SHA-256 hashed and chained to the previous record —
                 any tampering breaks the hash chain, making this ledger
@@ -81,21 +81,21 @@ for log in logs:
             ">
                 <div style="
                     width: 10px; height: 10px; border-radius: 50%;
-                    background: #F5A623;
-                    box-shadow: 0 0 8px rgba(245,166,35,0.5);
+                    background: #4F6AF5;
+                    box-shadow: 0 0 8px rgba(79,106,245,0.40);
                     margin-top: 4px; flex-shrink: 0;
                 "></div>
                 <div style="
                     width: 1px; flex: 1; min-height: 32px;
-                    background: rgba(245,166,35,0.15);
+                    background: rgba(79,106,245,0.20);
                     margin-top: 4px;
                 "></div>
             </div>
             <!-- Entry card -->
             <div style="
                 flex: 1;
-                background: #0D1526;
-                border: 1px solid rgba(255,255,255,0.06);
+                background: #FFFFFF;
+                border: 1px solid #E2E8F0;
                 border-radius: 10px;
                 padding: 0.75rem 1rem;
                 margin-bottom: 0.2rem;
@@ -105,14 +105,14 @@ for log in logs:
                     align-items: flex-start; gap: 1rem;
                 ">
                     <span style="
-                        font-family: 'DM Sans', sans-serif;
-                        font-size: 0.88rem; color: #EFF4FB;
+                        font-family: 'Geist', sans-serif;
+                        font-size: 0.88rem; color: #0F172A;
                         font-weight: 500; line-height: 1.4;
                         flex: 1;
                     ">{action}</span>
                     <span style="
-                        font-family: 'DM Mono', monospace;
-                        font-size: 0.7rem; color: #4A5A72;
+                        font-family: 'Geist Mono', monospace;
+                        font-size: 0.7rem; color: #64748B;
                         white-space: nowrap; flex-shrink: 0;
                     ">{timestamp}</span>
                 </div>
@@ -121,11 +121,11 @@ for log in logs:
                     display: flex; gap: 1.5rem;
                 ">
                     <span style="
-                        font-family: 'DM Mono', monospace;
-                        font-size: 0.68rem; color: #4A5A72;
-                    ">#{entry_id} · Hash: <span style="color:#F5A62390">{curr_hash}</span></span>
+                        font-family: 'Geist Mono', monospace;
+                        font-size: 0.68rem; color: #64748B;
+                    ">#{entry_id} · Hash: <span style="color:#4F6AF590">{curr_hash}</span></span>
                     <span style="
-                        font-family: 'DM Mono', monospace;
+                        font-family: 'Geist Mono', monospace;
                         font-size: 0.68rem; color: #2A3A52;
                     ">Prev: {prev_hash}</span>
                 </div>

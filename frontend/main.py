@@ -9,18 +9,12 @@ st.set_page_config(
     page_title="VendorBridge ERP",
     page_icon="🌉",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="auto",
 )
 
 from utils.style import apply_global_styles, sidebar_branding
 
 apply_global_styles()
-
-st.markdown("""
-<style>
-[data-testid="stSidebarNav"] { display: none !important; }
-</style>
-""", unsafe_allow_html=True)
 
 API_URL = "http://localhost:8000"
 
@@ -44,7 +38,7 @@ for key, default in [
 PAGES_DIR = os.path.join(os.path.dirname(__file__), "pages")
 
 def make_page(filename, label, icon):
-    return st.Page(os.path.join(PAGES_DIR, filename), title=label, icon=icon)
+    return {"path": os.path.join(PAGES_DIR, filename), "label": label, "icon": icon}
 
 ALL_PAGES = {
     "dashboard":   make_page("1_dashboard.py",    "Dashboard",         "📊"),
@@ -233,11 +227,27 @@ if st.session_state.user_role is None:
 else:
     role       = st.session_state.user_role
     page_keys  = ROLE_PAGES.get(role, ["dashboard"])
-    nav_pages  = [ALL_PAGES[k] for k in page_keys]
 
-    pg = st.navigation(nav_pages)
+    if st.session_state.get("active_page") not in page_keys:
+        st.session_state.active_page = page_keys[0]
 
     sidebar_branding()
+
+    st.sidebar.markdown('<div class="vb-nav-label">Navigation</div>', unsafe_allow_html=True)
+    for page_key in page_keys:
+        page = ALL_PAGES[page_key]
+        is_active = st.session_state.active_page == page_key
+        button_label = f"{page['icon']}  {page['label']}"
+        if st.sidebar.button(
+            button_label,
+            key=f"nav_{page_key}",
+            use_container_width=True,
+            type="primary" if is_active else "secondary",
+        ):
+            st.session_state.active_page = page_key
+            st.rerun()
+
+    st.sidebar.markdown('<div class="vb-sidebar-divider"></div>', unsafe_allow_html=True)
 
     role_colors = {
         "Admin":               "#4F6AF5",
@@ -287,8 +297,11 @@ else:
     st.sidebar.markdown("<div style='height:0.4rem'></div>", unsafe_allow_html=True)
 
     if st.sidebar.button("Sign Out", use_container_width=True):
-        for key in ["user_role", "user_email", "user_id", "vendor_id"]:
+        for key in ["user_role", "user_email", "user_id", "vendor_id", "active_page"]:
             st.session_state[key] = None
         st.rerun()
 
-    pg.run()
+    active_page = ALL_PAGES[st.session_state.active_page]
+    with open(active_page["path"], "r", encoding="utf-8") as page_file:
+        page_code = compile(page_file.read(), active_page["path"], "exec")
+        exec(page_code, {"__name__": "__main__", "__file__": active_page["path"]})
