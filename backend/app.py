@@ -2,7 +2,8 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List
-import pandas as pd # Make sure this is at the top of app.py if not already
+from datetime import datetime, timezone
+import pandas as pd
 import hashlib
 from database import engine, get_db
 import models
@@ -239,3 +240,141 @@ def download_invoice(po_number: str):
     if os.path.exists(filepath):
         return FileResponse(filepath, media_type='application/pdf', filename=f"{po_number}.pdf")
     raise HTTPException(status_code=404, detail="Invoice file not found.")
+
+# --- RFQ STATUS UPDATE (Publish Draft → Open) ---
+@app.patch("/rfqs/{rfq_id}/status", tags=["Procurement"])
+def update_rfq_status(rfq_id: int, new_status: str, db: Session = Depends(get_db)):
+    """Updates the status of an RFQ. Used to publish a Draft to Open."""
+    rfq = db.query(models.RFQ).filter(models.RFQ.id == rfq_id).first()
+    if not rfq:
+        raise HTTPException(status_code=404, detail="RFQ not found")
+    rfq.status = new_status
+    db.commit()
+    db.refresh(rfq)
+    return {"status": "success", "rfq_id": rfq_id, "new_status": new_status}
+
+
+# --- SEND INVOICE VIA EMAIL ---
+@app.post("/send-invoice/{po_number}", tags=["Fulfillment"])
+def send_invoice_email(po_number: str, recipient_email: str):
+    """Sends the generated invoice PDF to a recipient email via SMTP."""
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.base import MIMEBase
+    from email.mime.text import MIMEText
+    from email import encoders
+
+    filepath = f"generated_docs/Invoice_{po_number}.pdf"
+    if not os.path.exists(filepath):
+        raise HTTPException(status_code=404, detail="Invoice PDF not found. Generate PO first.")
+
+    # --- SMTP CONFIG — update these with real credentials ---
+    SMTP_SERVER = "smtp.gmail.com"
+    SMTP_PORT = 587
+    SENDER_EMAIL = "your_email@gmail.com"       # ← Change this
+    SENDER_PASSWORD = "your_app_password"        # ← Change this (use Gmail App Password)
+
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = recipient_email
+        msg['Subject'] = f"VendorBridge — Invoice {po_number}"
+
+        body = f"""Dear Vendor,
+
+Please find attached the official Purchase Order & Invoice document: {po_number}.
+
+This document has been generated and authorized through the VendorBridge ERP system.
+
+Regards,
+VendorBridge Procurement Team"""
+        msg.attach(MIMEText(body, 'plain'))
+
+        with open(filepath, "rb") as f:
+            part = MIMEBase('application', 'octet-stream')
+            part.set_payload(f.read())
+            encoders.encode_base64(part)
+            part.add_header('Content-Disposition', f'attachment; filename="Invoice_{po_number}.pdf"')
+            msg.attach(part)
+
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SENDER_EMAIL, SENDER_PASSWORD)
+            server.sendmail(SENDER_EMAIL, recipient_email, msg.as_string())
+
+        return {"status": "success", "message": f"Invoice sent to {recipient_email}"}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Email failed: {str(e)}")
+
+
+# --- AUDIT LEDGER RETRIEVAL ---
+@app.get("/audit-logs/", tags=["Activity"])
+def get_audit_logs(db: Session = Depends(get_db)):
+    """Returns full audit ledger for the Activity Logs page."""
+    logs = db.query(models.AuditLedger).order_by(models.AuditLedger.id.desc()).all()
+    result = []
+    for log in logs:
+        result.append({
+            "id":            log.id,
+            "user_id":       log.user_id,
+            "action":        log.action,
+            "timestamp":     log.timestamp.isoformat() if log.timestamp else "",
+            "current_hash":  log.current_hash[:16] + "…",   # truncated for display
+            "previous_hash": log.previous_hash[:16] + "…",
+        })
+    return result
+
+
+# --- ANALYTICS ENGINE ---
+@app.get("/analytics/summary", tags=["Analytics"])
+def get_analytics_summary(db: Session = Depends(get_db)):
+    """Aggregated procurement statistics for the Reports page."""
+    rfqs       = db.query(models.RFQ).all()
+    vendors    = db.query(models.Vendor).all()
+    quotations = db.query(models.Quotation).all()
+    pos        = db.query(models.PurchaseOrder).all()
+
+    # Status breakdown
+    status_counts = {}
+    for r in rfqs:
+        status_counts[r.status] = status_counts.get(r.status, 0) + 1
+
+    # Monthly RFQ trend (last 6 months)
+    from collections import defaultdict
+    monthly = defaultdict(int)
+    for r in rfqs:
+        if r.created_at:
+            key = r.created_at.strftime("%b %Y")
+            monthly[key] += 1
+
+    # Vendor spend — sum of (unit_price * rfq.quantity) for Selected quotations
+    vendor_spend = defaultdict(float)
+    for q in quotations:
+        if q.status == "Selected":
+            rfq = db.query(models.RFQ).filter(models.RFQ.id == q.rfq_id).first()
+            vendor = db.query(models.Vendor).filter(models.Vendor.id == q.vendor_id).first()
+            if rfq and vendor:
+                spend = q.unit_price * rfq.quantity
+                vendor_spend[vendor.name] += spend
+
+    # Category distribution
+    cat_counts = defaultdict(int)
+    for v in vendors:
+        cat_counts[v.category] += 1
+
+    # Top vendor by health score
+    top_vendor = max(vendors, key=lambda v: v.health_score, default=None)
+
+    return {
+        "total_rfqs":      len(rfqs),
+        "total_vendors":   len(vendors),
+        "total_quotations": len(quotations),
+        "total_pos":       len(pos),
+        "status_breakdown": status_counts,
+        "monthly_trend":   dict(monthly),
+        "vendor_spend":    dict(vendor_spend),
+        "category_dist":   dict(cat_counts),
+        "top_vendor":      {"name": top_vendor.name, "score": top_vendor.health_score} if top_vendor else None,
+        "avg_health_score": round(sum(v.health_score for v in vendors) / len(vendors), 2) if vendors else 0,
+    }
