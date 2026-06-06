@@ -66,6 +66,26 @@ def login(email: str, password: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     return {"id": user.id, "email": user.email, "role": user.role}
 
+@app.post("/admin/users/", response_model=schemas.UserResponse, tags=["Admin"])
+def admin_create_user(user: schemas.UserCreate, admin_email: str, db: Session = Depends(get_db)):
+    """Admin-only: Create users of any role including Admin. Requires admin_email query param."""
+    requesting_admin = db.query(models.User).filter(models.User.email == admin_email, models.User.role == "Admin").first()
+    if not requesting_admin:
+        raise HTTPException(status_code=403, detail="Only Admins can create Admin accounts.")
+    db_user = db.query(models.User).filter(models.User.email == user.email).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    new_user = models.User(
+        email=user.email,
+        password_hash=hash_password(user.password),
+        role=user.role
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
+
+
 # --- VENDOR REGISTRATION ---
 @app.post("/vendors/", response_model=schemas.VendorResponse, tags=["Vendors"])
 def register_vendor(vendor: schemas.VendorCreate, db: Session = Depends(get_db)):
@@ -219,6 +239,8 @@ def approve_procurement(rfq_id: int, winning_quote_id: int, manager_id: int, rem
     
     if not rfq or not quote:
         raise HTTPException(status_code=404, detail="Target not found")
+    if rfq.status not in ["Open", "Under Review"]:
+        raise HTTPException(status_code=400, detail=f"Cannot approve: RFQ status is '{rfq.status}'.")
         
     # State Machine Transitions
     rfq.status = "Approved"
